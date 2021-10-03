@@ -1,9 +1,23 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ImageSourcePropType,
+} from "react-native";
 
-const FooterButton = ({ title, icon }: { title: string; icon: string }) => {
+const FooterButton = ({
+  title,
+  icon,
+}: {
+  title: string;
+  icon: ImageSourcePropType;
+}) => {
   return (
     <TouchableOpacity style={styles.button} onPress={() => console.log("test")}>
+      <Image source={icon} style={styles.icon} />
       <Text style={styles.text}>{title}</Text>
     </TouchableOpacity>
   );
@@ -12,7 +26,12 @@ const FooterButton = ({ title, icon }: { title: string; icon: string }) => {
 export default function Footer() {
   return (
     <View style={styles.footer}>
-      {FooterButton({ title: "Estoque", icon: "/assets/icons/list.svg" })}
+      {FooterButton({ title: "Estoque", icon: require("./list.png") })}
+      {FooterButton({
+        title: "Vender",
+        icon: require("./attach_money.png"),
+      })}
+      {FooterButton({ title: "Adicionar", icon: require("./add.png") })}
     </View>
   );
 }
@@ -23,7 +42,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     position: "absolute",
     bottom: 0,
-    height: 50,
+    height: 70,
     backgroundColor: "#6200AF",
     width: "100%",
   },
@@ -37,8 +56,11 @@ const styles = StyleSheet.create({
   },
   text: {
     color: "#ffffff",
-    fontFamily: "Montserrat-Regular",
     fontWeight: "400",
-    fontSize: 48,
+    fontSize: 16,
+  },
+  icon: {
+    width: 40,
+    height: 40,
   },
 });
