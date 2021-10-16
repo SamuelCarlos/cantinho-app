@@ -1,5 +1,6 @@
 import { RouteProp } from "@react-navigation/core";
 import { StackNavigationProp } from "@react-navigation/stack";
+import axios from "axios";
 import React from "react";
 import {
   View,
@@ -10,14 +11,15 @@ import {
   Image,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { CompleteProduct } from "./item";
 
 interface EditItem {
   name?: string;
-  buy_price?: number;
-  sell_price?: number;
-  inventory?: number;
+  buy_price?: string;
+  sell_price?: string;
+  inventory?: string;
 }
 
 export default function EditPage({
@@ -27,23 +29,83 @@ export default function EditPage({
   route: RouteProp<{ data: { data: CompleteProduct } }, "data">;
   navigation: StackNavigationProp<any, any>;
 }) {
+  const [SKU, setSKU] = React.useState<string>("");
   const [formData, setFormData] = React.useState<EditItem>({});
+  const [canSubmit, setCanSubmit] = React.useState<boolean>(false);
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [originalData, setOriginalData] = React.useState<EditItem>({});
 
   React.useEffect(() => {
     const itemData = route.params.data;
-
+    setSKU(itemData.SKU);
     setOriginalData({
       name: itemData.name,
-      buy_price: itemData.buy_price,
-      sell_price: itemData.sell_price,
-      inventory: itemData.inventory,
+      buy_price: itemData.buy_price.toString(),
+      sell_price: itemData.sell_price.toString(),
+      inventory: itemData.inventory.toString(),
     });
   }, [route.params.data]);
 
   React.useEffect(() => {
     setFormData(originalData);
   }, [originalData]);
+
+  const verifyFields = (data: EditItem) => {
+    if (!data.name || data.name.length === 0) {
+      setCanSubmit(false);
+      return;
+    }
+
+    if (
+      !data.buy_price ||
+      data.buy_price.length === 0 ||
+      Number.isNaN(Number(data.buy_price))
+    ) {
+      setCanSubmit(false);
+      return;
+    }
+
+    if (
+      !data.sell_price ||
+      data.sell_price.length === 0 ||
+      Number.isNaN(Number(data.sell_price))
+    ) {
+      setCanSubmit(false);
+      return;
+    }
+
+    if (
+      !data.inventory ||
+      data.inventory.length === 0 ||
+      Number.isNaN(Number(data.inventory))
+    ) {
+      setCanSubmit(false);
+      return;
+    }
+
+    setCanSubmit(true);
+  };
+
+  React.useEffect(() => {
+    verifyFields(formData);
+  }, [formData]);
+
+  const handleSubmit = async () => {
+    if (canSubmit && SKU) {
+      setIsLoading(true);
+      try {
+        await axios.put(`/product/${SKU}`, {
+          name: formData.name,
+          buy_price: Number(formData.buy_price),
+          sell_price: Number(formData.sell_price),
+          inventory: Number(formData.inventory),
+        });
+      } catch (err) {
+        console.log(err);
+      }
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -75,7 +137,7 @@ export default function EditPage({
                 Comprado por:
               </Text>
               <TextInput
-                value={formData.buy_price || 0}
+                value={formData.buy_price}
                 onChangeText={(text) => {
                   setFormData({ ...formData, buy_price: text });
                 }}
@@ -83,6 +145,45 @@ export default function EditPage({
                 keyboardType="number-pad"
               />
             </View>
+            <View style={styles.input}>
+              <Text style={{ ...styles.label, ...styles.text }}>
+                Vendido por:
+              </Text>
+              <TextInput
+                value={formData.sell_price}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, sell_price: text });
+                }}
+                style={styles.textField}
+                keyboardType="number-pad"
+              />
+            </View>
+            <View style={styles.input}>
+              <Text style={{ ...styles.label, ...styles.text }}>
+                Em estoque:
+              </Text>
+              <TextInput
+                value={formData.inventory}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, inventory: text });
+                }}
+                style={styles.textField}
+                keyboardType="number-pad"
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.enter}
+              disabled={!canSubmit || isLoading}
+              onPress={() => handleSubmit()}
+            >
+              <Text style={styles.textWhite}>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  "Confirmar"
+                )}
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -99,6 +200,9 @@ const styles = StyleSheet.create({
   },
   text: {
     color: "#000",
+  },
+  textWhite: {
+    color: "#fff",
   },
   backButton: {
     display: "flex",
@@ -124,6 +228,7 @@ const styles = StyleSheet.create({
   },
   form: {
     marginTop: 20,
+    marginBottom: 40,
     width: "60%",
     display: "flex",
     alignItems: "center",
@@ -168,5 +273,15 @@ const styles = StyleSheet.create({
     width: 25,
     height: 25,
     resizeMode: "contain",
+  },
+  enter: {
+    width: "100%",
+    height: 40,
+    marginTop: 20,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#6200AF",
+    borderRadius: 100,
   },
 });
