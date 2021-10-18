@@ -21,22 +21,37 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import { useAuth } from "./src/hooks/useAuth";
 import Footer from "./src/components/footer";
+import SellPage from "./src/pages/sell/homepage";
 
 const InventoryStack = createStackNavigator();
 const InventoryStackPage = () => (
   <InventoryStack.Navigator screenOptions={{ headerShown: false }}>
     <InventoryStack.Screen name="Estoque Home" component={Homepage} />
-    <InventoryStack.Screen name="BarcodeReader" component={BarcodeReader} />
+    <InventoryStack.Screen
+      name="BarcodeReader inventory"
+      component={BarcodeReader}
+    />
     <InventoryStack.Screen name="Item" component={ItemPage} />
     <InventoryStack.Screen name="Edit" component={EditPage} />
   </InventoryStack.Navigator>
+);
+
+const SellStack = createStackNavigator();
+const SellStackPage = () => (
+  <SellStack.Navigator screenOptions={{ headerShown: false }}>
+    <SellStack.Screen
+      name="BarcodeReader Home sell"
+      component={BarcodeReader}
+    />
+    <SellStack.Screen name="Sell" component={SellPage} />
+  </SellStack.Navigator>
 );
 
 const AppStack = createBottomTabNavigator();
 const AppStackPage = () => (
   <AppStack.Navigator screenOptions={{ headerShown: false }} tabBar={Footer}>
     <AppStack.Screen name="Estoque" component={InventoryStackPage} />
-    <AppStack.Screen name="Vender" component={Buypage} />
+    <AppStack.Screen name="Vender" component={SellStackPage} />
     <AppStack.Screen name="Adicionar" component={Buypage} />
     <AppStack.Screen name="Perfil" component={SettingsPage} />
   </AppStack.Navigator>

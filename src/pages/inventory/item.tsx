@@ -8,11 +8,17 @@ import {
   ActivityIndicator,
   ScrollView,
   SafeAreaView,
+  Modal,
+  Share,
 } from "react-native";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 
+import { useFonts, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
+
 import showToast from "../../utils/showToast";
+
+import { useIsFocused } from "@react-navigation/native";
 
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RouteProp } from "@react-navigation/core";
@@ -21,6 +27,7 @@ import api from "../../connection/api";
 
 import { Product } from "./homepage";
 import { AxiosResponse } from "axios";
+import ViewShot, { captureRef } from "react-native-view-shot";
 
 interface ProductState {
   state: Partial<Product>;
@@ -44,6 +51,16 @@ export default function ItemPage({
   const [SKU, setSKU] = React.useState<string | null>(null);
   const [isLoadingQR, setIsLoadingQR] = React.useState<boolean>(false);
   const [isDownloading, setIsDownloading] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isPrinting, setIsPrinting] = React.useState(false);
+
+  const [fontsLoaded] = useFonts({
+    Montserrat_400Regular,
+  });
+
+  const printView = React.useRef();
+
+  const isFocused = useIsFocused();
 
   React.useEffect(() => {
     if (route.params.SKU) {
@@ -76,39 +93,160 @@ export default function ItemPage({
     }
   }, [SKU]);
 
-  const saveFile = async (fileUri: string) => {
+  React.useEffect(() => {
+    if (isFocused) {
+      if (!route.params.SKU) {
+        navigation.popToTop();
+      }
+    }
+  }, [isFocused]);
+
+  const saveFile = async (fileUri: string, result: string) => {
     let permission = await MediaLibrary.getPermissionsAsync();
+
     if (permission.status !== "granted") {
       permission = await MediaLibrary.requestPermissionsAsync();
     }
     if (permission.status === "granted") {
       const asset = await MediaLibrary.createAssetAsync(fileUri);
-      await MediaLibrary.createAlbumAsync("Download", asset, false);
+      await MediaLibrary.createAlbumAsync("Cantinho", asset, false);
+      await FileSystem.writeAsStringAsync(fileUri, result, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
     }
   };
 
-  const downloadFile = () => {
-    if (!data?.qr_code) return null;
+  const ViewToPrint = () => {
+    if (data) {
+      return (
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            position: "absolute",
+            top: -200000,
+          }}
+          onPress={() => setIsPrinting(false)}
+        >
+          <ViewShot ref={printView} options={{ format: "jpg", quality: 0.9 }}>
+            <View
+              style={{
+                padding: 20,
+                width: 280,
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: "#ffffff",
+                borderWidth: 2,
+                borderColor: "#000000",
+                borderStyle: "solid",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 26,
+                  textAlign: "justify",
+                  fontFamily: "Montserrat_400Regular",
+                }}
+              >
+                {data.name}
+              </Text>
+              <Image
+                source={{ uri: data.qr_code }}
+                style={itemStyles.QRCode}
+                onLoadStart={() => setIsLoadingQR(true)}
+                onLoadEnd={() => setIsLoadingQR(false)}
+              />
+              <Text
+                style={{ fontSize: 22, fontFamily: "Montserrat_400Regular" }}
+              >
+                Cartão: R$ {data.sell_price.toFixed(2)}
+              </Text>
+              <Text
+                style={{ fontSize: 22, fontFamily: "Montserrat_400Regular" }}
+              >
+                À vista: R$ {data.sell_price_cash.toFixed(2)}
+              </Text>
+            </View>
+          </ViewShot>
+        </TouchableOpacity>
+      );
+    }
+    return <></>;
+  };
+
+  React.useEffect(() => {}, [printView.current]);
+
+  const downloadFile = async () => {
+    setIsPrinting(true);
     setIsDownloading(true);
-    const uri = data.qr_code;
-    let fileUri = FileSystem.documentDirectory + `qr-${data.SKU}.png`;
-
-    FileSystem.downloadAsync(uri, fileUri)
-      .then(async ({ uri }) => {
-        await saveFile(uri);
-        setIsDownloading(false);
-      })
-      .catch((error) => {
-        setIsDownloading(false);
-
-        showToast(
-          "Você deve permitir o download se quiser a imagem na sua galeria"
-        );
+    if (printView.current && data) {
+      const result = await captureRef(printView, {
+        format: "jpg",
+        quality: 1,
+        result: "base64",
       });
+
+      let fileUri = FileSystem.documentDirectory + `qr-${data.SKU}.png`;
+
+      await saveFile(fileUri, result);
+
+      setIsDownloading(false);
+      setIsPrinting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/product/${data?.SKU}`);
+
+      setIsDeleting(false);
+      navigation.goBack();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const handleReactivate = async () => {
+    try {
+      await api.post(`/product/${data?.SKU}`);
+      fetchData();
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   return (
     <View style={styles.container}>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isDeleting}
+        onRequestClose={() => setIsDeleting(false)}
+      >
+        <View style={styles.modal}>
+          <View style={styles.modalContent}>
+            <Text>Deseja mesmo excluir o item?</Text>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => handleDelete()}
+              >
+                <Text style={{ color: "red" }}>Sim</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setIsDeleting(false)}
+              >
+                <Text style={{ color: "black" }}>Não</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {ViewToPrint()}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
@@ -126,9 +264,16 @@ export default function ItemPage({
               <View style={itemStyles.nameView}>
                 <Text style={itemStyles.name}>{data.name}</Text>
               </View>
-              <View style={itemStyles.tag}>
+              <View
+                style={[
+                  itemStyles.tag,
+                  { backgroundColor: data.deleted_at ? "red" : "#B090C9" },
+                ]}
+              >
                 <Text style={itemStyles.tagTitle}>qtd</Text>
-                <Text style={itemStyles.inventory}>{data.inventory}</Text>
+                <Text style={itemStyles.inventory}>
+                  {data.deleted_at ? "-" : data.inventory}
+                </Text>
               </View>
             </View>
             <View style={itemStyles.datesBar}>
@@ -173,12 +318,12 @@ export default function ItemPage({
                       letterSpacing: -1,
                     }}
                   >
-                    R${Number(data.buy_price).toFixed(2)}
+                    R$ {Number(data.buy_price).toFixed(2)}
                   </Text>
                 </View>
-                <View style={itemStyles.sellPrice}>
+                <View style={[itemStyles.sellPrice, { marginBottom: 5 }]}>
                   <Text style={{ fontSize: 16, color: "#0C7717" }}>
-                    Vendido:
+                    Vendido (cartão):
                   </Text>
                   <Text
                     style={{
@@ -188,15 +333,32 @@ export default function ItemPage({
                       letterSpacing: -1,
                     }}
                   >
-                    R${Number(data.sell_price).toFixed(2)}
+                    R$ {Number(data.sell_price).toFixed(2)}
+                  </Text>
+                </View>
+                <View style={itemStyles.sellPrice}>
+                  <Text style={{ fontSize: 16, color: "#0C7717" }}>
+                    Vendido (à vista):
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: "#0C7717",
+                      letterSpacing: -1,
+                    }}
+                  >
+                    R$ {Number(data.sell_price_cash).toFixed(2)}
                   </Text>
                 </View>
               </View>
               <View style={itemStyles.priceBarRightSide}>
-                <Text style={{ fontSize: 20 }}>Lucro:</Text>
+                <Text style={{ fontSize: 20 }}>Lucro (cartão):</Text>
                 <Text style={{ fontSize: 28, fontWeight: "bold" }}>
-                  {((Number(data.sell_price) - Number(data.buy_price)) * 100) /
-                    Number(data.buy_price)}
+                  {(
+                    ((Number(data.sell_price) - Number(data.buy_price)) * 100) /
+                    Number(data.buy_price)
+                  ).toFixed(2)}
                   %
                 </Text>
                 <Text style={{ fontSize: 28, fontWeight: "bold" }}>
@@ -204,6 +366,23 @@ export default function ItemPage({
                   {(Number(data.sell_price) - Number(data.buy_price)).toFixed(
                     2
                   )}
+                </Text>
+                <Text style={{ fontSize: 20, marginTop: 10 }}>
+                  Lucro (à vista):
+                </Text>
+                <Text style={{ fontSize: 28, fontWeight: "bold" }}>
+                  {(
+                    ((Number(data.sell_price_cash) - Number(data.buy_price)) *
+                      100) /
+                    Number(data.buy_price)
+                  ).toFixed(2)}
+                  %
+                </Text>
+                <Text style={{ fontSize: 28, fontWeight: "bold" }}>
+                  R$
+                  {(
+                    Number(data.sell_price_cash) - Number(data.buy_price)
+                  ).toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -224,7 +403,7 @@ export default function ItemPage({
               <TouchableOpacity
                 style={itemStyles.button}
                 onPress={() => downloadFile()}
-                disabled={isDownloading}
+                disabled={isDownloading || isLoadingQR}
               >
                 {isDownloading ? (
                   <ActivityIndicator size="small" color="#B090C9" />
@@ -246,12 +425,23 @@ export default function ItemPage({
                 />
                 <Text style={itemStyles.buttonText}>Editar Item</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={itemStyles.button}>
+              <TouchableOpacity
+                style={itemStyles.button}
+                onPress={() =>
+                  data.deleted_at ? handleReactivate() : setIsDeleting(true)
+                }
+              >
                 <Image
                   style={itemStyles.icon}
-                  source={require("../assets/delete.png")}
+                  source={
+                    data.deleted_at
+                      ? require("../assets/reactivate.png")
+                      : require("../assets/delete.png")
+                  }
                 />
-                <Text style={itemStyles.buttonText}>Excluir Item</Text>
+                <Text style={itemStyles.buttonText}>
+                  {data.deleted_at ? "Reativar item" : "Excluir item"}
+                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -342,6 +532,7 @@ const itemStyles = StyleSheet.create({
     width: "50%",
     justifyContent: "center",
     alignItems: "center",
+    paddingLeft: 20,
   },
   buyPrice: {
     width: "100%",
@@ -417,5 +608,35 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     marginBottom: 20,
     marginTop: 90,
+  },
+  modal: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0, 0.6)",
+  },
+  modalContent: {
+    width: "90%",
+    height: 120,
+    backgroundColor: "#ffffff",
+    padding: 20,
+    position: "relative",
+  },
+  buttonRow: {
+    width: "100%",
+    flexDirection: "row",
+    position: "absolute",
+    justifyContent: "space-between",
+    bottom: 0,
+    alignSelf: "center",
+    paddingLeft: 20,
+    paddingRight: 20,
+  },
+  modalButton: {
+    width: "50%",
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

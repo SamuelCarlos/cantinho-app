@@ -1,7 +1,6 @@
 import React from "react";
 import {
   View,
-  ScrollView,
   SafeAreaView,
   Text,
   StyleSheet,
@@ -9,8 +8,10 @@ import {
   TextInput,
   TouchableOpacity,
   Keyboard,
+  FlatList,
+  ActivityIndicator,
 } from "react-native";
-import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+
 import { useIsFocused } from "@react-navigation/native";
 
 import api from "../../connection/api";
@@ -20,6 +21,7 @@ export interface Product {
   SKU: string;
   buy_price: number;
   sell_price: number;
+  sell_price_cash: number;
   name: string;
   inventory: number;
   created_at: Date;
@@ -42,12 +44,14 @@ export const Homepage = ({
   } | null>(null);
   const [items, setItems] = React.useState<Product[] | null>(null);
   const [page, setPage] = React.useState<number>(1);
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
-  const step = 10;
+  const step = 20;
 
   const isFocused = useIsFocused();
 
   const handleItemList = async () => {
+    setIsLoading(true);
     try {
       const with_deleted = false;
 
@@ -56,25 +60,38 @@ export const Homepage = ({
       )) as AxiosResponse<{
         products: Product[];
       }>;
+      setPage(page + 1);
 
       if (response.data.products.length > 0) {
-        setItems(response.data.products);
+        if (!items || items?.length === 0) {
+          setItems(response.data.products);
+        } else if (items) {
+          setItems([...items, ...response.data.products]);
+        }
       }
     } catch (err) {
       console.error(err);
     }
+    setIsLoading(false);
   };
 
   const handleSearch = () => {
     Keyboard.dismiss();
-    handleItemList();
+    setItems(null);
+    setPage(1);
   };
 
   React.useEffect(() => {
-    if (isFocused === true) {
+    if (items === null && page === 1) {
       handleItemList();
     }
-  }, [isFocused]);
+  }, [items, page]);
+
+  navigation.addListener("focus", () => {
+    setItems(null);
+    setPage(1);
+    handleItemList();
+  });
 
   React.useEffect(() => {
     if (items && items.length > 0 && filter !== null) {
@@ -110,39 +127,38 @@ export const Homepage = ({
     }
   }, [filter]);
 
-  const ItemComponentList = (): JSX.Element[] | JSX.Element => {
-    if (items) {
-      return items.map((item, index) => {
-        return (
-          <TouchableOpacity
-            key={item.SKU}
-            onPress={() => navigation.push("Item", { SKU: item.SKU })}
-          >
-            <View style={styles.item}>
-              <Text style={styles.itemName}>{item?.name || ""}</Text>
-              <View style={styles.itemAttributes}>
-                <View style={styles.itemEachAttribute}>
-                  <Text>{item.inventory}</Text>
-                </View>
-                <View style={styles.itemEachAttribute}>
-                  <Text>R${Number(item.buy_price).toFixed(2)}</Text>
-                </View>
-                <View style={styles.itemEachAttribute}>
-                  <Text>R${Number(item.sell_price).toFixed(2)}</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      });
-    }
-    return <Text>Nenhum item para mostrar.</Text>;
-  };
+  React.useEffect(() => {
+    handleItemList();
+  }, [search]);
+
+  const ItemComponentList = (item: Product): JSX.Element => (
+    <TouchableOpacity
+      key={item.SKU}
+      onPress={() => navigation.push("Item", { SKU: item.SKU })}
+    >
+      <View style={styles.item}>
+        <Text style={styles.itemName}>{item?.name || ""}</Text>
+        <View style={styles.itemAttributes}>
+          <View style={styles.itemEachAttribute}>
+            <Text>{item.inventory}</Text>
+          </View>
+          <View style={styles.itemEachAttribute}>
+            <Text>R$ {Number(item.buy_price).toFixed(2)}</Text>
+          </View>
+          <View style={styles.itemEachAttribute}>
+            <Text>R$ {Number(item.sell_price).toFixed(2)}</Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
       <View style={styles.searchBar}>
-        <TouchableOpacity onPress={() => navigation.push("BarcodeReader")}>
+        <TouchableOpacity
+          onPress={() => navigation.push("BarcodeReader inventory")}
+        >
           <Image
             source={require("../assets/camera.png")}
             style={styles.searchIcon}
@@ -150,7 +166,9 @@ export const Homepage = ({
         </TouchableOpacity>
         <TextInput
           value={search}
-          onChangeText={(text) => setSearch(text)}
+          onChangeText={(text) => {
+            setSearch(text);
+          }}
           style={styles.searchField}
           placeholder="Busca"
         />
@@ -230,7 +248,7 @@ export const Homepage = ({
             }}
           >
             <View style={styles.eachFilter}>
-              <Text style={styles.filterText}>Venda</Text>
+              <Text style={styles.filterText}>V (cartão)</Text>
               <Image
                 source={require("../assets/arrow-up.png")}
                 style={[
@@ -245,11 +263,33 @@ export const Homepage = ({
             </View>
           </TouchableOpacity>
         </View>
-        {items && (
-          <ScrollView style={styles.scrollView}>
-            {ItemComponentList()}
-          </ScrollView>
-        )}
+        <View style={styles.scrollView}>
+          {items ? (
+            <FlatList<Product>
+              data={items}
+              renderItem={({ item }) => ItemComponentList(item)}
+              onEndReached={() => {
+                if (items.length >= page * step) handleItemList();
+              }}
+              onEndReachedThreshold={0.1}
+              keyExtractor={(item) => item.SKU}
+              extraData={isFocused}
+              ListFooterComponent={
+                isLoading ? (
+                  <ActivityIndicator size="small" color="#000000" />
+                ) : (
+                  <></>
+                )
+              }
+            />
+          ) : isLoading ? (
+            <ActivityIndicator size="small" color="#B090C9" />
+          ) : (
+            <Text style={{ alignSelf: "center", marginTop: 20 }}>
+              Nenhum item encontrado.
+            </Text>
+          )}
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -342,6 +382,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     padding: 1,
+    height: 600,
   },
 });
 

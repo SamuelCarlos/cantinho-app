@@ -18,7 +18,7 @@ interface BarcodeReaderProps {
 }
 
 export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
-  const [scanned, setScanned] = React.useState<boolean>(false);
+  const [hasReaded, setHasReaded] = React.useState(false);
   const [type, setType] = React.useState<any>(
     BarCodeScanner.Constants.Type.back
   );
@@ -41,22 +41,25 @@ export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
   }, []);
 
   const handleBarCodeScanned = (scanningResult: BarCodeScannerResult) => {
-    if (!scanned) {
-      const { type, data, bounds: { origin } = {} } = scanningResult;
+    const { type, data, bounds: { origin } = {} } = scanningResult;
 
-      // @ts-ignore
-      const { x, y } = origin;
+    // @ts-ignore
+    const { x, y } = origin;
 
+    if (
+      x >= viewMinX &&
+      y >= viewMinY &&
+      x <= viewMinX + finderWidth / 2 &&
+      y <= viewMinY + finderHeight / 2
+    ) {
+      setHasReaded(true);
       if (
-        x >= viewMinX &&
-        y >= viewMinY &&
-        x <= viewMinX + finderWidth / 2 &&
-        y <= viewMinY + finderHeight / 2
-      ) {
-        setScanned(true);
-
+        navigation.getState().routes[1] &&
+        navigation.getState().routes[1].name.includes("inventory")
+      )
         navigation.push("Item", { SKU: data });
-      }
+      if (navigation.getState().routes[0].name.includes("sell"))
+        navigation.push("Sell", { SKU: data });
     }
   };
 
@@ -80,19 +83,31 @@ export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
         <Text style={{ color: "#fff" }}>Voltar</Text>
       </TouchableOpacity>
       <BarCodeScanner
-        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+        onBarCodeScanned={hasReaded ? undefined : handleBarCodeScanned}
         type={type}
         barCodeTypes={[BarCodeScanner.Constants.BarCodeType.qr]}
         style={[StyleSheet.absoluteFillObject, styles.container]}
       >
         <BarcodeMask edgeColor="#6200AF" showAnimatedLine />
-        {scanned && (
-          <Button
-            title={"Tap to Scan Again"}
-            onPress={() => setScanned(false)}
-          />
-        )}
       </BarCodeScanner>
+      {hasReaded && (
+        <TouchableOpacity
+          style={{
+            position: "absolute",
+            bottom: 50,
+            alignSelf: "center",
+            zIndex: 10000,
+            backgroundColor: "#6200AF",
+            padding: 20,
+            borderRadius: 10,
+          }}
+          onPress={() => setHasReaded(false)}
+        >
+          <View>
+            <Text style={{ color: "#ffffff" }}>Ler novamente</Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

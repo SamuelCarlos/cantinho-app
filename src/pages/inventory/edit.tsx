@@ -1,6 +1,5 @@
 import { RouteProp } from "@react-navigation/core";
 import { StackNavigationProp } from "@react-navigation/stack";
-import axios from "axios";
 import React from "react";
 import {
   View,
@@ -19,8 +18,13 @@ interface EditItem {
   name?: string;
   buy_price?: string;
   sell_price?: string;
+  sell_price_cash?: string;
   inventory?: string;
 }
+
+import api from "../../connection/api";
+
+import showToast from "../../utils/showToast";
 
 export default function EditPage({
   route,
@@ -42,6 +46,7 @@ export default function EditPage({
       name: itemData.name,
       buy_price: itemData.buy_price.toString(),
       sell_price: itemData.sell_price.toString(),
+      sell_price_cash: itemData.sell_price_cash.toString(),
       inventory: itemData.inventory.toString(),
     });
   }, [route.params.data]);
@@ -83,6 +88,16 @@ export default function EditPage({
       return;
     }
 
+    if (
+      data.name === originalData.name &&
+      data.buy_price === originalData.buy_price &&
+      data.sell_price === originalData.sell_price &&
+      data.inventory === originalData.inventory
+    ) {
+      setCanSubmit(false);
+      return;
+    }
+
     setCanSubmit(true);
   };
 
@@ -94,12 +109,14 @@ export default function EditPage({
     if (canSubmit && SKU) {
       setIsLoading(true);
       try {
-        await axios.put(`/product/${SKU}`, {
+        await api.put(`/product/${SKU}`, {
           name: formData.name,
           buy_price: Number(formData.buy_price),
           sell_price: Number(formData.sell_price),
           inventory: Number(formData.inventory),
         });
+        showToast("Item atualizado com sucesso!");
+        navigation.goBack();
       } catch (err) {
         console.log(err);
       }
@@ -147,12 +164,25 @@ export default function EditPage({
             </View>
             <View style={styles.input}>
               <Text style={{ ...styles.label, ...styles.text }}>
-                Vendido por:
+                Vendido por (cartão):
               </Text>
               <TextInput
                 value={formData.sell_price}
                 onChangeText={(text) => {
                   setFormData({ ...formData, sell_price: text });
+                }}
+                style={styles.textField}
+                keyboardType="number-pad"
+              />
+            </View>
+            <View style={styles.input}>
+              <Text style={{ ...styles.label, ...styles.text }}>
+                Vendido por (à vista):
+              </Text>
+              <TextInput
+                value={formData.sell_price_cash}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, sell_price_cash: text });
                 }}
                 style={styles.textField}
                 keyboardType="number-pad"
