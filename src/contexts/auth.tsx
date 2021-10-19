@@ -62,7 +62,6 @@ export const AuthProvider = ({
         "/auth/signin",
         formData
       )) as AxiosResponse<SignInResponse>;
-      showToast(formData.phone);
       setPhone(formData.phone);
       if (response.status === 200 && response.data.token) {
         await AsyncStorage.setItem("@Cantinho:token", response.data.token);
@@ -78,6 +77,7 @@ export const AuthProvider = ({
       }
       if (err.response.status === 422) {
         showToast("Telefone não verificado.");
+        showToast(formData.phone);
       }
       return err.response.status;
     }
