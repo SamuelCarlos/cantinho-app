@@ -74,6 +74,11 @@ export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text>Pedindo permissão para utilizar a câmera</Text>
+        <TouchableOpacity onPress={() => requestPermission()}>
+          <Text style={{ textDecorationLine: "underline" }}>
+            Pedir acesso novamente
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
