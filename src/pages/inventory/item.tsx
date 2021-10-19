@@ -138,9 +138,6 @@ export default function ItemPage({
                 justifyContent: "center",
                 alignItems: "center",
                 backgroundColor: "#ffffff",
-                borderWidth: 2,
-                borderColor: "#000000",
-                borderStyle: "solid",
               }}
             >
               <Text
