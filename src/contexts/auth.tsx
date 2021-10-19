@@ -62,6 +62,7 @@ export const AuthProvider = ({
         "/auth/signin",
         formData
       )) as AxiosResponse<SignInResponse>;
+      showToast(formData.phone);
       setPhone(formData.phone);
       if (response.status === 200 && response.data.token) {
         await AsyncStorage.setItem("@Cantinho:token", response.data.token);
