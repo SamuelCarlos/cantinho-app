@@ -35,8 +35,13 @@ export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
 
   React.useEffect(() => {
     (async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === "granted");
+      let permission = await BarCodeScanner.getPermissionsAsync();
+      if (permission.status !== "granted") {
+        permission = await BarCodeScanner.requestPermissionsAsync();
+      }
+      if (permission.status === "granted") {
+        setHasPermission(true);
+      }
     })();
   }, []);
 
