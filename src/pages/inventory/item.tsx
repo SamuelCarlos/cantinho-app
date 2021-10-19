@@ -217,6 +217,14 @@ export default function ItemPage({
     }
   };
 
+  if (isLoadingItem) {
+    return (
+      <View style={[styles.container, { justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color="#B090C9" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Modal
