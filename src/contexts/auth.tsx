@@ -69,6 +69,7 @@ export const AuthProvider = ({
         return 200;
       }
     } catch (err: any) {
+      console.log(err);
       if (err.response.status === 400) {
         showToast("Telefone ou senha incorretos.");
       }
@@ -77,7 +78,6 @@ export const AuthProvider = ({
       }
       if (err.response.status === 422) {
         showToast("Telefone não verificado.");
-        showToast(formData.phone);
       }
       return err.response.status;
     }
@@ -91,9 +91,9 @@ export const AuthProvider = ({
         password: formData.password,
       })) as AxiosResponse<SignUpResponse>;
 
-      if (response.status === 200) {
+      if (response.status === 201) {
         setPhone(formData.phone);
-        return 200;
+        return 201;
       }
     } catch (err: any) {
       if (err.response.status === 422) {

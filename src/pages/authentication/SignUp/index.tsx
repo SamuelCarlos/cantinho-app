@@ -53,7 +53,7 @@ export default function SignUpPage({
     if (canSubmit) {
       setIsLoading(true);
       const response = await signUp(formData);
-      if (response === 200) {
+      if (response === 201) {
         navigation.push("TokenConfirm");
       } else if (response === 422) {
         navigation.push("SignIn");
