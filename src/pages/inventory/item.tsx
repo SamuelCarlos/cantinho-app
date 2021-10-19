@@ -50,9 +50,10 @@ export default function ItemPage({
   const [data, setData] = React.useState<CompleteProduct | null>(null);
   const [SKU, setSKU] = React.useState<string | null>(null);
   const [isLoadingQR, setIsLoadingQR] = React.useState<boolean>(false);
-  const [isDownloading, setIsDownloading] = React.useState(false);
-  const [isDeleting, setIsDeleting] = React.useState(false);
-  const [isPrinting, setIsPrinting] = React.useState(false);
+  const [isDownloading, setIsDownloading] = React.useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = React.useState<boolean>(false);
+  const [isPrinting, setIsPrinting] = React.useState<boolean>(false);
+  const [isLoadingItem, setIsLoadingItem] = React.useState<boolean>(false);
 
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular,
@@ -72,6 +73,7 @@ export default function ItemPage({
 
   const fetchData = async () => {
     try {
+      setIsLoadingItem(true);
       const response = (await api.get(`/product/${SKU}`)) as AxiosResponse<{
         product: CompleteProduct;
       }>;
@@ -81,9 +83,11 @@ export default function ItemPage({
       } else {
         setData(null);
       }
+      setIsLoadingItem(false);
     } catch (err) {
-      console.log(err);
-      return err;
+      showToast("Erro ao carregar este item.");
+      setIsLoadingItem(false);
+      navigation.goBack();
     }
   };
 
@@ -101,18 +105,14 @@ export default function ItemPage({
     }
   }, [isFocused]);
 
-  const saveFile = async (fileUri: string, result: string) => {
+  const saveFile = async (fileUri: string) => {
     let permission = await MediaLibrary.getPermissionsAsync();
-
     if (permission.status !== "granted") {
       permission = await MediaLibrary.requestPermissionsAsync();
     }
     if (permission.status === "granted") {
       const asset = await MediaLibrary.createAssetAsync(fileUri);
       await MediaLibrary.createAlbumAsync("Cantinho", asset, false);
-      await FileSystem.writeAsStringAsync(fileUri, result, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
     }
   };
 
@@ -144,11 +144,7 @@ export default function ItemPage({
               }}
             >
               <Text
-                style={{
-                  fontSize: 26,
-                  textAlign: "justify",
-                  fontFamily: "Montserrat_400Regular",
-                }}
+                style={{ fontSize: 22, fontFamily: "Montserrat_400Regular" }}
               >
                 {data.name}
               </Text>
@@ -190,7 +186,11 @@ export default function ItemPage({
 
       let fileUri = FileSystem.documentDirectory + `qr-${data.SKU}.png`;
 
-      await saveFile(fileUri, result);
+      await FileSystem.writeAsStringAsync(fileUri, result, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      await saveFile(fileUri);
 
       setIsDownloading(false);
       setIsPrinting(false);

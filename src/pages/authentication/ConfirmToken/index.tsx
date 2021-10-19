@@ -27,7 +27,7 @@ export default function TokenConfirmPage({
   const { confirmToken, phone } = useAuth();
 
   React.useEffect(() => {
-    if (formData.length < 6) {
+    if (formData.length === 6) {
       setCanSubmit(true);
     } else {
       setCanSubmit(false);
