@@ -69,18 +69,10 @@ export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
   };
 
   if (hasPermission === null) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Pedindo permissão para utilizar a câmera</Text>
-      </View>
-    );
+    return <Text>Pedindo permissão para utilizar a câmera</Text>;
   }
   if (hasPermission === false) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Sem acesso à câmera</Text>
-      </View>
-    );
+    return <Text>Sem acesso à câmera</Text>;
   }
 
   return (
