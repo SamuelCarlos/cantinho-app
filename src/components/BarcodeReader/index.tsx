@@ -33,16 +33,18 @@ export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
   const viewMinX = (width - finderWidth) / 2;
   const viewMinY = (height - finderHeight) / 2;
 
+  const requestPermission = async () => {
+    let permission = await BarCodeScanner.getPermissionsAsync();
+    if (permission.status !== "granted") {
+      permission = await BarCodeScanner.requestPermissionsAsync();
+    }
+    if (permission.status === "granted") {
+      setHasPermission(true);
+    }
+  };
+
   React.useEffect(() => {
-    (async () => {
-      let permission = await BarCodeScanner.getPermissionsAsync();
-      if (permission.status !== "granted") {
-        permission = await BarCodeScanner.requestPermissionsAsync();
-      }
-      if (permission.status === "granted") {
-        setHasPermission(true);
-      }
-    })();
+    requestPermission();
   }, []);
 
   const handleBarCodeScanned = (scanningResult: BarCodeScannerResult) => {
@@ -69,10 +71,23 @@ export default function BarcodeReader({ navigation }: BarcodeReaderProps) {
   };
 
   if (hasPermission === null) {
-    return <Text>Pedindo permissão para utilizar a câmera</Text>;
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Pedindo permissão para utilizar a câmera</Text>
+      </View>
+    );
   }
   if (hasPermission === false) {
-    return <Text>Sem acesso à câmera</Text>;
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Sem acesso à câmera</Text>
+        <TouchableOpacity onPress={() => requestPermission()}>
+          <Text style={{ textDecorationLine: "underline" }}>
+            Pedir acesso novamente
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
