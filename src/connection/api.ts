@@ -2,10 +2,8 @@ import axios from "axios";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = process.env.API_URL;
-
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: "https://cantinho-app-api.herokuapp.com",
 });
 
 api.interceptors.request.use(async (config) => {
